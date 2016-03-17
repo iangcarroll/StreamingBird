@@ -1,0 +1,12 @@
+{
+    "name": "owlycode/streaming-bird",
+    "authors": [
+        {
+            "name": "OwlyCode",
+            "email": "tmaindron@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": { "OwlyCode\\StreamingBird\\": "src/" }
+    }
+}
