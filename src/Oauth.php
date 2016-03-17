@@ -44,9 +44,9 @@ class Oauth
      *
      * @return string
      */
-    public function getAuthorizationHeader($url, array $params)
+    public function getAuthorizationHeader($url, array $params, array $overrides = [])
     {
-        $headers = $this->prepareHeaders('POST', $url, $params);
+        $headers = $this->prepareHeaders('POST', $url, $params, $overrides);
 
         $headers = implode(',', array_map(function($name, $value){
             return sprintf('%s="%s"', $name, $value);
@@ -64,16 +64,16 @@ class Oauth
      *
      * @return array
      */
-    protected function prepareHeaders($method, $url, array $params)
+    protected function prepareHeaders($method, $url, array $params, array $overrides = [])
     {
-        $oauth = [
+        $oauth = array_merge([
             'oauth_consumer_key'     => $this->consumerKey,
             'oauth_nonce'            => md5(uniqid(rand(), true)),
             'oauth_signature_method' => 'HMAC-SHA1',
             'oauth_timestamp'        => time(),
             'oauth_version'          => '1.0A',
             'oauth_token'            => $this->oauthToken,
-        ];
+        ], $overrides);
 
         foreach ($oauth as $k => $v) {
             $oauth[$k] = rawurlencode($v);

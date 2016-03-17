@@ -2,7 +2,7 @@
 
 namespace OwlyCode\StreamingBird\Location;
 
-class Box implements LocationInterface
+class Collection implements LocationInterface
 {
     /**
      * @var LocationInterface[]

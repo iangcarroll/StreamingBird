@@ -46,6 +46,6 @@ class Circle implements LocationInterface
         $maxLon = round($this->longitude + rad2deg($this->radius / self::EARTH_RADIUS_KM / cos(deg2rad($this->latitude))), 2);
         $minLon = round($this->longitude - rad2deg($this->radius / self::EARTH_RADIUS_KM / cos(deg2rad($this->latitude))), 2);
 
-        return array($minLon, $minLat, $maxLon, $maxLat);
+        return [$minLon, $minLat, $maxLon, $maxLat];
     }
 }

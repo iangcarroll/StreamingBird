@@ -19,10 +19,19 @@ class Monitor
      */
     public function register($type, $name, $value = null)
     {
+        if ($value === null) {
+            if ($type === self::TYPE_MIN) {
+                $value = PHP_INT_MAX;
+            } else {
+                $value = 0;
+            }
+        }
+
+
         $this->stats[$name] = [
             'type'          => $type,
             'value'         => $type === self::TYPE_COUNT ? 0 : $value,
-            'originalValue' => $value,
+            'originalValue' => $type === self::TYPE_COUNT ? 0 : $value,
             'count'         => 0
         ];
     }
@@ -44,6 +53,10 @@ class Monitor
      */
     public function get($name)
     {
+        if (!$this->has($name)) {
+            throw new \RuntimeException(sprintf('Cannot get non existing dimension "%s"', $name));
+        }
+
         return $this->stats[$name]['value'];
     }
 
@@ -53,6 +66,10 @@ class Monitor
      */
     public function stat($name, $value)
     {
+        if (!$this->has($name)) {
+            throw new \RuntimeException(sprintf('Cannot add stat for non existing dimension "%s"', $name));
+        }
+
         switch ($this->stats[$name]['type']) {
             case self::TYPE_LAST:
                 $this->stats[$name]['value'] = $value;
@@ -81,5 +98,14 @@ class Monitor
     {
         $this->stats[$name]['value'] = $this->stats[$name]['originalValue'];
         $this->stats[$name]['count'] = 0;
+    }
+
+    /**
+     * @param  string $name
+     * @return boolean
+     */
+    public function has($name)
+    {
+        return array_key_exists($name, $this->stats);
     }
 }

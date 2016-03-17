@@ -2,11 +2,10 @@
 
 namespace OwlyCode\StreamingBird;
 
+use OwlyCode\StreamingBird\Location\LocationInterface;
+
 class StreamReader
 {
-    const FORMAT_JSON     = 'json';
-    const FORMAT_XML      = 'xml';
-
     const METHOD_FILTER   = 'filter';
     const METHOD_SAMPLE   = 'sample';
     const METHOD_RETWEET  = 'retweet';
@@ -16,14 +15,19 @@ class StreamReader
     const METHOD_SITE     = 'site';
 
     const URLS = [
-        'site'     => 'https://sitestream.twitter.com/1.1/site',
-        'user'     => 'https://userstream.twitter.com/2/user',
-        'filter'   => 'https://stream.twitter.com/1.1/statuses/filter',
-        'sample'   => 'https://stream.twitter.com/1.1/statuses/sample',
-        'retweet'  => 'https://stream.twitter.com/1.1/statuses/retweet',
-        'firehose' => 'https://stream.twitter.com/1.1/statuses/firehose',
-        'links'    => 'https://stream.twitter.com/1.1/statuses/links'
+        'site'     => 'https://sitestream.twitter.com/1.1/site.json',
+        'user'     => 'https://userstream.twitter.com/2/user.json',
+        'filter'   => 'https://stream.twitter.com/1.1/statuses/filter.json',
+        'sample'   => 'https://stream.twitter.com/1.1/statuses/sample.json',
+        'retweet'  => 'https://stream.twitter.com/1.1/statuses/retweet.json',
+        'firehose' => 'https://stream.twitter.com/1.1/statuses/firehose.json',
+        'links'    => 'https://stream.twitter.com/1.1/statuses/links.json'
     ];
+
+    /**
+     * @var Connection
+     */
+    private $connection;
 
     /**
      * @var Oauth
@@ -36,24 +40,28 @@ class StreamReader
     private $monitor;
 
     /**
+     * @var bool
+     */
+    private $running;
+
+    /**
     * @internal Moved from being a const to a variable, because some methods (user and site) need to change it.
     */
     protected $baseUrl = 'https://stream.twitter.com/1.1/statuses/';
 
     protected $method;
-    protected $format;
     protected $count; //Can be -150,000 to 150,000. @see http://dev.twitter.com/pages/streaming_api_methods#count
     protected $followIds;
     protected $trackWords;
     protected $location;
 
     /**
-     * @param Oauth   $oauth
-     * @param string  $method
-     * @param string  $format
-     * @param boolean $lang
+     * @param Connection $connection
+     * @param Oauth      $oauth
+     * @param string     $method
+     * @param boolean    $lang
      */
-    public function __construct(Oauth $oauth, $method = AbstractStream::METHOD_SAMPLE, $format = self::FORMAT_JSON, $lang = false)
+    public function __construct(Connection $connection, Oauth $oauth, $method = AbstractStream::METHOD_SAMPLE, $lang = false)
     {
         $this->monitor = new Monitor();
 
@@ -63,34 +71,47 @@ class StreamReader
 
         $this->oauth  = $oauth;
         $this->method = $method;
-        $this->format = $format;
         $this->lang   = $lang;
+
+        $this->connection = $connection;
     }
 
     /**
      * Consume from the streaming API.
      *
      * Will retry on any connection loss.
+     *
+     * @param callable $handler
      */
     public function consume(callable $handler)
     {
-        while (1) {
+        $this->running = true;
+
+        while ($this->running) {
             $this->consumeOnce($handler);
         }
+    }
+
+    public function stop()
+    {
+        $this->connection->close();
+        $this->running = false;
     }
 
     /**
      * Consume from the streaming API.
      *
      * Will not retry on connection loss.
+     *
+     * @param callable $handler
      */
     protected function consumeOnce(callable $handler)
     {
-        $connection = $this->connect();
+        $this->connection = $this->connect();
 
         $lastStreamActivity = time();
 
-        $connection->read(function ($tweet) use (&$lastStreamActivity, $handler) {
+        $this->connection->read(function ($tweet) use (&$lastStreamActivity, $handler) {
             $idle = (time() - $lastStreamActivity);
 
             $this->monitor->stat('max_idle_time', $idle);
@@ -102,31 +123,28 @@ class StreamReader
             call_user_func($handler, $tweet, $this->monitor);
         });
 
-        $connection->close();
+        $this->connection->close();
     }
 
     /**
-     * @param integer $timeout
-     * @param integer $attempts
+     * @param int $timeout
+     * @param int $attempts
      *
      * @return Connection
      */
     protected function connect($timeout = 5, $attempts = 10)
     {
-        $url      = self::URLS[$this->method] . '.' . $this->format;
+        $url      = self::URLS[$this->method];
         $urlParts = parse_url($url);
         $scheme   = $urlParts['scheme'] == 'https' ? 'ssl://' : 'tcp://';
         $port     = $urlParts['scheme'] == 'https' ? 443 : 80;
 
-        // Setup params appropriately
         $requestParams = [];
 
-        // Setup the language of the stream
         if ($this->lang) {
             $requestParams['language'] = $this->lang;
         }
 
-        // Filter takes additional parameters
         if (($this->method === self::METHOD_FILTER || $this->method === self::METHOD_USER) && count($this->trackWords) > 0) {
             $requestParams['track'] = implode(',', $this->trackWords);
         }
@@ -142,18 +160,22 @@ class StreamReader
             $requestParams['count'] = $this->count;
         }
 
-        $connection = new Connection();
-        $connection->open($scheme . $urlParts['host'], $port, $timeout, $attempts);
-        $connection->authenticate($url, $requestParams, $this->oauth->getAuthorizationHeader($url, $requestParams));
+        $this->connection->open($scheme . $urlParts['host'], $port, $timeout, $attempts);
+        $this->connection->authenticate($url, $requestParams, $this->oauth->getAuthorizationHeader($url, $requestParams));
 
-        return $connection;
+        return $this->connection;
     }
 
     /**
-    * Set host port
-    *
+     * @return Monitor
+     */
+    public function getMonitor()
+    {
+        return $this->monitor;
+    }
+
+    /**
     * @param string $host
-    * @return void
     */
     public function setHostPort($port)
     {
@@ -161,10 +183,7 @@ class StreamReader
     }
 
     /**
-    * Set secure host port
-    *
     * @param int $port
-    * @return void
     */
     public function setSecureHostPort($port)
     {
@@ -213,8 +232,6 @@ class StreamReader
     }
 
     /**
-    * Returns an array of keywords being tracked
-    *
     * @return array
     */
     public function getTrack()
@@ -243,7 +260,7 @@ class StreamReader
     * and filter + track methods. This is generally used internally and should not be needed by client applications.
     * Applies to: METHOD_FILTER, METHOD_FIREHOSE, METHOD_LINKS
     *
-    * @param integer $count
+    * @param int $count
     */
     public function setCount($count)
     {

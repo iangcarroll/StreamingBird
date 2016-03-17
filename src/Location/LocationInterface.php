@@ -1,5 +1,7 @@
 <?php
 
+namespace OwlyCode\StreamingBird\Location;
+
 interface LocationInterface
 {
     /**
