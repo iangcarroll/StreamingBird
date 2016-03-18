@@ -180,6 +180,8 @@ class StreamReader
     public function setHostPort($port)
     {
         $this->hostPort = $port;
+
+        return $this;
     }
 
     /**
@@ -188,6 +190,8 @@ class StreamReader
     public function setSecureHostPort($port)
     {
         $this->secureHostPort = $port;
+
+        return $this;
     }
 
     /**
@@ -200,9 +204,11 @@ class StreamReader
     */
     public function setFollow(array $userIds = [])
     {
-        sort($userIds); // Non-optimal but necessary
+        sort($userIds);
 
         $this->followIds = $userIds;
+
+        return $this;
     }
 
     /**
@@ -229,6 +235,8 @@ class StreamReader
         sort($trackWords); // Non-optimal, but necessary
 
         $this->trackWords = $trackWords;
+
+        return $this;
     }
 
     /**
@@ -245,6 +253,8 @@ class StreamReader
     public function setLocation(LocationInterface $location)
     {
         $this->location = $location;
+
+        return $this;
     }
 
     /**
@@ -265,6 +275,8 @@ class StreamReader
     public function setCount($count)
     {
         $this->count = $count;
+
+        return $this;
     }
 
     /**
@@ -275,6 +287,8 @@ class StreamReader
     public function setLang($lang)
     {
         $this->lang = $lang;
+
+        return $this;
     }
 
     /**
