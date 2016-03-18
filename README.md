@@ -9,9 +9,8 @@ Example usage
 -------------
 
 ```php
-use OwlyCode\StreamingBird\Connection;
-use OwlyCode\StreamingBird\Oauth;
 use OwlyCode\StreamingBird\StreamReader;
+use OwlyCode\StreamingBird\StreamingBird;
 
  // Change these with yours.
 $oauthToken = 'my token';
