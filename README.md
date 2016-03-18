@@ -18,7 +18,6 @@ $oauthSecret = 'secret';
 $consumerKey = 'my key';
 $consumerSecret = 'secret';
 
-// Let's instantiate the Oauth signature handler and the stream reader.
 $bird = new StreamingBird($consumerKey, $consumerSecret, $oauthToken, $oauthSecret);
 
 $bird
